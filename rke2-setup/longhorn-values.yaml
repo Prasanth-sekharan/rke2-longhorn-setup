@@ -1,0 +1,114 @@
+# =============================================================================
+# Longhorn Helm Values for 3-Server + 2-Agent RKE2 Cluster
+# =============================================================================
+# Install with:
+#   helm repo add longhorn https://charts.longhorn.io
+#   helm repo update
+#   helm install longhorn longhorn/longhorn \
+#     --namespace longhorn-system --create-namespace \
+#     -f longhorn-values.yaml
+# =============================================================================
+
+# --- Global Settings ---
+defaultSettings:
+  # Number of replicas for each volume (spread across SERVER-1,2,3 with 2TB disks)
+  defaultReplicaCount: 3
+
+  # If a replica hasn't been seen for this many minutes, mark it as stale
+  staleReplicaTimeout: 2880
+
+  # Store replica data on same node as the pod (best-effort)
+  defaultDataLocality: best-effort
+
+  # Allow Longhorn to create default disk on labeled nodes
+  createDefaultDiskLabeledNodes: true
+
+  # Storage over-provisioning percentage (100 = no over-provisioning)
+  storageOverProvisioningPercentage: 100
+
+  # Storage minimal available percentage (set to 10 to keep headroom)
+  storageMinimalAvailablePercentage: 10
+
+  # Automatic engine upgrade
+  autoUpgradeEngine: true
+
+  # Replica soft anti-affinity (spread replicas across nodes)
+  replicaSoftAntiAffinity: true
+
+  # Replica zone soft anti-affinity (spread across zones if available)
+  replicaZoneSoftAntiAffinity: true
+
+  # Concurrent automatic engine upgrade per node limit
+  concurrentAutomaticEngineUpgradePerNodeLimit: 3
+
+  # Guaranteed instance manager CPU (percentage, 0 = disabled)
+  guaranteedInstanceManagerCpu: 0
+
+# --- Default Disk Settings ---
+# Label SERVER-1,2,2 nodes with: node.longhorn.io/create-default-disk=true
+defaultDiskSelector:
+  - name: "server-disks"
+    matchLabels:
+      node.longhorn.io/create-default-disk: "true"
+
+# --- StorageClass ---
+persistence:
+  # Default StorageClass name
+  defaultClass: true
+  defaultClassReplicaCount: 3
+  reclaimPolicy: Delete
+  # Filesystem type
+  defaultFsType: ext4
+  # Volume binding mode
+  defaultMkfsParams: ""
+
+# --- Ingress for Longhorn UI ---
+ingress:
+  enabled: false
+  # Uncomment to enable ingress for the Longhorn UI
+  # ingressClassName: nginx
+  # host: longhorn.example.com
+  # tls:
+  #   - secretName: longhorn-tls
+  #     hosts:
+  #       - longhorn.example.com
+
+# --- Service ---
+service:
+  ui:
+    type: NodePort
+    nodePort: 31080
+
+# --- Resources ---
+longhornManager:
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+longhornDriver:
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+longhornUI:
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+  replicas: 1
